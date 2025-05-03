@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainzaib AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            height: 500px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .user-msg {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin: 5px 0;
+            max-width: 80%;
+            margin-left: auto;
+        }
+        .bot-msg {
+            background: #f1f1f1;
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin: 5px 0;
+            max-width: 80%;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+        }
+        #send-btn, #voice-btn {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        .language-tag {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Brainzaib AI</h1>
+    <div class="chat-container" id="chat-output"></div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="Type your message...">
+        <button id="voice-btn">🎤</button>
+        <button id="send-btn">Send</button>
+    </div>
+
+    <script>
+        // Enhanced responses with language support
+        const responses = {
+            "en": {
+                "hello": "Hello! I'm Brainzaib. How can I help you?",
+                "your name": "I'm Brainzaib, your AI assistant!",
+                "default": "I'm still learning. Could you rephrase that?"
+            },
+            "hi": {
+                "namaste": "नमस्ते! मैं Brainzaib हूँ। मैं आपकी कैसे मदद कर सकता हूँ?",
+                "tumhara naam": "मेरा नाम Brainzaib है",
+                "default": "मैं अभी सीख रहा हूँ। क्या आप इसे दोबारा कह सकते हैं?"
+            },
+            "ur": {
+                "salam": "السلام علیکم! میں Brainzaib ہوں۔ میں آپ کی کس طرح مدد کر سکتا ہوں؟",
+                "ap ka name": "میرا نام Brainzaib ہے",
+                "default": "میں ابھی سیکھ رہا ہوں۔ کیا آپ اسے دوبارہ کہہ سکتے ہیں؟"
+            }
+        };
+
+        // Improved language detection
+        function detectLanguage(text) {
+            if (/[\u0900-\u097F]/.test(text)) return 'hi'; // Hindi
+            if (/[\u0600-\u06FF]/.test(text)) return 'ur'; // Urdu/Arabic
+            return 'en'; // Default to English
+        }
+
+        // DOM elements
+        const chatOutput = document.getElementById('chat-output');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const voiceBtn = document.getElementById('voice-btn');
+
+        // Add message to chat
+        function addMessage(text, isUser, lang) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add(isUser ? 'user-msg' : 'bot-msg');
+            msgDiv.textContent = text;
+            
+            if (!isUser && lang) {
+                const langTag = document.createElement('div');
+                langTag.classList.add('language-tag');
+                langTag.textContent = `Detected language: ${lang.toUpperCase()}`;
+                msgDiv.appendChild(langTag);
+            }
+            
+            chatOutput.appendChild(msgDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight;
+        }
+
+        // Process user input
+        function processInput() {
+            const text = userInput.value.trim();
+            if (!text) return;
+            
+            const lang = detectLanguage(text);
+            addMessage(text, true);
+            userInput.value = '';
+            
+            // Show typing indicator
+            const typingMsg = document.createElement('div');
+            typingMsg.classList.add('bot-msg');
+            typingMsg.textContent = '...';
+            chatOutput.appendChild(typingMsg);
+            
+            // Get response after delay
+            setTimeout(() => {
+                chatOutput.removeChild(typingMsg);
+                
+                const lowerText = text.toLowerCase();
+                let response = responses[lang]['default'];
+                
+                for (const key in responses[lang]) {
+                    if (lowerText.includes(key)) {
+                        response = responses[lang][key];
+                        break;
+                    }
+                }
+                
+                addMessage(response, false, lang);
+            }, 1000);
+        }
+
+        // Voice recognition setup
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            voiceBtn.addEventListener('click', () => {
+                recognition.start();
+                voiceBtn.textContent = '🔴';
+                addMessage("Listening...", false);
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    userInput.value = transcript;
+                    voiceBtn.textContent = '🎤';
+                    processInput();
+                };
+                
+                recognition.onerror = () => {
+                    voiceBtn.textContent = '🎤';
+                    addMessage("Couldn't hear you. Please try again.", false);
+                };
+            });
+        } else {
+            voiceBtn.style.display = 'none';
+        }
+
+        // Event listeners
+        sendBtn.addEventListener('click', processInput);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processInput();
+        });
+
+        // Initial greeting
+        setTimeout(() => {
+            addMessage("Hello! I'm Brainzaib. You can ask me anything!", false, 'en');
+        }, 500);
+    </script>
+</body>
+</html>
